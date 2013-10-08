@@ -1,6 +1,6 @@
 module Quantum where
-import Data.Map as M hiding(map, filter, null, union)
-import Data.Set as S hiding(map, filter, null)
+import Data.Map as M hiding(map, filter, null, union, foldr)
+import Data.Set as S hiding(map, filter, null, foldr)
 import Data.List --(intercalate, nub, foldr1, union, foldr, group)
 import Control.Monad(filterM)
 import Control.Monad.Error
@@ -8,7 +8,7 @@ import Control.Monad.Error
 data Piece = Fu | Ky | Ke | Gi | Ki | Ka | Hi | Ou deriving (Show, Eq, Ord)
 type Move = [Int]
 type SuperPiece = Set Piece
-type Evidences = [SuperPiece]
+type Result = SuperPiece
 
 data MyError = InvalidMoveCombination Int
              | InvalidMove Int Int
@@ -59,9 +59,6 @@ showMap board = intercalate "\n" [show p++"\t"++(show$ S.toList mvs)|(p,mvs)<-M.
 calcMax :: SuperPiece->Int
 calcMax set = foldr1 (+)$ map (\p->case M.lookup p initialPiecesMap of Just x->x)$ S.toList set
 
-prove :: Evidences->Bool
-prove = undefined
-
 subset :: [a]->[[a]]
 subset = filterM$ const [False,True]
 subsetNonEmpty =  tail.subset
@@ -80,17 +77,21 @@ count xs = map (\xs->(xs!!0, length xs))$Data.List.group$ Data.List.sort xs
 
 countsUnion = map(foldr1 (\(s1,c1) (s2,c2)->(S.union s1 s2, c1+c2))). subsetNonEmpty
 
-checkMaxFromUnion :: [(SuperPiece, Int)] -> ThrowsError Bool
-checkMaxFromUnion = (liftM and).mapM (\(set, cnt)->case M.lookup set maxsMap of Just mx->if cnt<=mx then return True else throwError$ PieceExhausted set cnt)
+checkMaxFromUnion :: [(SuperPiece, Int)] -> ThrowsError Result
+checkMaxFromUnion = liftM (foldr S.union S.empty). mapM (\(set, cnt)->case M.lookup set maxsMap of
+                                                       Just mx->case cnt`compare`mx of 
+                                                                  EQ->return set
+                                                                  LT->return (S.empty)
+                                                                  GT->throwError$ PieceExhausted set cnt)
 
-checkMax :: [SuperPiece]->ThrowsError Bool
+checkMax :: [SuperPiece]->ThrowsError Result
 checkMax supers = mapM f (zip supers [0..]) >>= checkMaxFromUnion. countsUnion. count
   where f (sup, i) = if sup==S.fromList[] then throwError$ InvalidMoveCombination i else return sup
 
-checkMaxFromList :: [[Piece]]->ThrowsError Bool
+checkMaxFromList :: [[Piece]]->ThrowsError Result
 checkMaxFromList = checkMax. map S.fromList
 
-checkMaxFromMove :: [[Move]]->ThrowsError Bool
+checkMaxFromMove :: [[Move]]->ThrowsError Result
 checkMaxFromMove moves = mapM (\(m,i)->superPieceFromMoves m i) (zip moves [0..]) >>= checkMax
 
 superPieceFromMoves :: [Move]->Int->ThrowsError SuperPiece
@@ -99,19 +100,9 @@ superPieceFromMoves moves index = liftM (foldr1 S.intersection). mapM f$ zip mov
                     Just sp->return sp
                     Nothing->throwError$ InvalidMove index i
 
-checkMaxFromNums :: [([Move], Int)]->ThrowsError Bool
+checkMaxFromNums :: [([Move], Int)]->ThrowsError Result
 checkMaxFromNums nums = superPieceFromNums nums >>= checkMax
 
 superPieceFromNums :: [([Move], Int)]->ThrowsError [SuperPiece]
 superPieceFromNums nums = liftM concat. mapM f$ zip nums [0..]
   where f ((mvs, num), i) = liftM(replicate num)$ superPieceFromMoves mvs i
-{-
-input :: [SuperPiece]
-input = map S.fromList[[Hi,Ky],[Hi],[Hi,Ky],[Hi,Ky]]
-
-inputCounts :: [(SuperPiece, Int)]
-inputCounts = count input
-
-inputCountsUnion :: [(SuperPiece, Int)]
-inputCountsUnion = countsUnion inputCounts
--}
