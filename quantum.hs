@@ -22,7 +22,7 @@ instance Error MyError where
 showError :: MyError->String
 showError (InvalidMove p m) = "invalid move: "++show p++", "++show m
 showError (InvalidMoveCombination p) = "invalid move combination: "++show p
-showError (PieceExhausted super num) = "invalid move combination: "++show (S.toList super)++show num
+showError (PieceExhausted super num) = "piece exhausted: "++show (S.toList super)++show num
 showError (Default str) = str
 
 instance Show MyError where show = showError
@@ -81,7 +81,7 @@ count xs = map (\xs->(xs!!0, length xs))$Data.List.group$ Data.List.sort xs
 countsUnion = map(foldr1 (\(s1,c1) (s2,c2)->(S.union s1 s2, c1+c2))). subsetNonEmpty
 
 checkMaxFromUnion :: [(SuperPiece, Int)] -> ThrowsError Bool
-checkMaxFromUnion = return. and.map (\(set, cnt)->case M.lookup set maxsMap of Just mx->cnt<=mx)
+checkMaxFromUnion = (liftM and).mapM (\(set, cnt)->case M.lookup set maxsMap of Just mx->if cnt<=mx then return True else throwError$ PieceExhausted set cnt)
 
 checkMax :: [SuperPiece]->ThrowsError Bool
 checkMax supers = mapM f (zip supers [0..]) >>= checkMaxFromUnion. countsUnion. count

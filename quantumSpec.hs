@@ -10,16 +10,16 @@ spec = do
       it "Hi Ky*2, Hi*1" $
         checkMaxFromMove [[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` return True
       it "Hi Ky*1, Hi*2" $
-        checkMaxFromMove [[[0,-2]],[[0,2]],[[0,2]]] `shouldBe` return False
+        checkMaxFromMove [[[0,-2]],[[0,2]],[[0,2]]] `shouldBe` Left (PieceExhausted (S.fromList[Hi]) 2)
       it "Hi*2" $
-        checkMaxFromMove [[[0,-2],[1,0]],[[0,2]]] `shouldBe` return False
+        checkMaxFromMove [[[0,-2],[1,0]],[[0,2]]] `shouldBe` Left (PieceExhausted (S.fromList[Hi]) 2)
       it "(1,1)*4" $
         checkMaxFromMove [[[1,1]],[[1,1]],[[1,1]],[[1,1]]] `shouldBe` return True
       it "(1,1)*5" $
-        checkMaxFromMove [[[1,1]],[[1,1]],[[1,1]],[[1,1]],[[1,1]]] `shouldBe` return False
-      it "(1,1)*5, (2,2)*1" $
-        checkMaxFromMove [[[1,1]],[[1,1]],[[1,1]],[[1,1]],[[2,2]]] `shouldBe` return False
+        checkMaxFromMove [[[1,1]],[[1,1]],[[1,1]],[[1,1]],[[1,1]]] `shouldBe` Left (PieceExhausted (S.fromList[Gi,Ka,Ou]) 5)
       it "(1,1)*4, (2,2)*1" $
+        checkMaxFromMove [[[1,1]],[[1,1]],[[1,1]],[[1,1]],[[2,2]]] `shouldBe` Left (PieceExhausted (S.fromList[Gi,Ka,Ou]) 5)
+      it "(1,1)*3, (2,2)*1" $
         checkMaxFromMove [[[1,1]],[[1,1]],[[1,1]],[[2,2]]] `shouldBe` return True
       it "(1,-2)(-1,-1)*1" $
         checkMaxFromNums [([[0,-1]], 1), ([[1,-2],[-1,-1]],1)] `shouldBe` Left (InvalidMoveCombination 1)
