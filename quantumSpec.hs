@@ -36,6 +36,8 @@ spec = do
         checkMaxFromNums [([[1,0],[1,1]], 1)] `shouldBe` return (set [Ou])
       it "(1,0)(1,1)*2" $
         checkMaxFromNums [([[1,0],[1,1]], 2)] `shouldBe` Left (PieceExhausted (set [Ou]) 2)
+      it "(1,0)(1,1)*1, (1,1)*2" $
+        checkMaxFromNums [([[1,0],[1,1]], 1), ([[1,1]], 2)] `shouldBe` return (set[Ou])
       it "(1,0)(1,1)*1, (1,1)*3" $
         checkMaxFromNums [([[1,0],[1,1]], 1), ([[1,1]], 3)] `shouldBe` return (set[Ka,Gi,Ou])
       it "(1,0)(1,1)*1, (1,1)*4" $

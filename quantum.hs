@@ -9,9 +9,10 @@ data Piece = Fu | Ky | Ke | Gi | Ki | Ka | Hi | Ou deriving (Show, Eq, Ord)
 type Move = [Int]
 type SuperPiece = Set Piece
 type Result = SuperPiece
+type Index = Int
 
-data MyError = InvalidMoveCombination Int
-             | InvalidMove Int Int
+data MyError = InvalidMoveCombination Index
+             | InvalidMove Index Index 
              | PieceExhausted SuperPiece Int
              | Default String deriving(Eq)
 
@@ -70,28 +71,24 @@ checkMaxFromUnion = liftM (foldr S.union S.empty). mapM f
                          LT->return (S.empty)
                          GT->throwError$ PieceExhausted set cnt
 
-checkMax :: [SuperPiece]->ThrowsError Result
-checkMax supers = mapM f (zip supers [0..]) >>= checkMaxFromUnion. countsUnion. count
-  where f (sup, i) = if sup==S.fromList[] then throwError$ InvalidMoveCombination i else return sup
-
-checkMaxFromList :: [[Piece]]->ThrowsError Result
-checkMaxFromList = checkMax. map S.fromList
+checkMaxFromSuperPiece :: [SuperPiece]->ThrowsError Result
+checkMaxFromSuperPiece supers = mapM f (zip [0..] supers) >>= checkMaxFromUnion. countsUnion. count
+  where f (i, sup) = if sup==S.fromList[] then throwError$ InvalidMoveCombination i else return sup
 
 checkMaxFromMove :: [[Move]]->ThrowsError Result
-checkMaxFromMove moves = mapM (\(m,i)->superPieceFromMoves m i) (zip moves [0..]) >>= checkMax
+checkMaxFromMove moves = mapM superPieceFromMoves (zip [0..] moves) >>= checkMaxFromSuperPiece
 
-superPieceFromMoves :: [Move]->Int->ThrowsError SuperPiece
-superPieceFromMoves moves index = liftM (foldr1 S.intersection). mapM f$ zip moves [0..]
-  where f (m,i) = case M.lookup m movingBoard of
+superPieceFromMoves :: (Index,[Move])->ThrowsError SuperPiece
+superPieceFromMoves (index, moves) = liftM (foldr1 S.intersection). mapM f$ zip [0..] moves
+  where f (i,m) = case M.lookup m movingBoard of
                     Just sp->return sp
                     Nothing->throwError$ InvalidMove index i
 
 superPieceListFromMoves :: [[Move]]->ThrowsError [SuperPiece]
-superPieceListFromMoves = mapM (\(i,m)->superPieceFromMoves m i). zip [0..]
+superPieceListFromMoves = mapM superPieceFromMoves. zip [0..]
 
 checkMaxFromNums :: [([Move], Int)]->ThrowsError Result
-checkMaxFromNums nums = superPieceFromNums nums >>= checkMax
+checkMaxFromNums = checkMaxFromMove. nums2moves
 
-superPieceFromNums :: [([Move], Int)]->ThrowsError [SuperPiece]
-superPieceFromNums nums = liftM concat. mapM f$ zip nums [0..]
-  where f ((mvs, num), i) = liftM(replicate num)$ superPieceFromMoves mvs i
+nums2moves :: [([Move], Int)]->[[Move]]
+nums2moves = concat. map (\(mvs, n)->replicate n mvs)
