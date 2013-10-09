@@ -51,8 +51,21 @@ spec = do
         checkMaxDetailedFromMove [[[0,-2]],[[0,-2]]] `shouldBe` return [(set[],[0,1])]
       it "(0,-2)*2, (0,2)*1" $
         checkMaxDetailedFromMove [[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` return [(set[Hi],[2]),(set[],[0,1]),(set[Ky,Hi],[0,1,2])]
+
     describe "ou detailed"$ do
       it "(1,0)(1,1)*1, (1,1)*2" $
         checkMaxDetailedFromNums [([[1,0],[1,1]], 1), ([[1,1]], 2)] `shouldBe` return [(fromList [Ou],[0]),(fromList [],[1,2]),(fromList [],[1,2,0])]
       it "(1,0)(1,1)*1, (1,1)*3" $
         checkMaxDetailedFromNums [([[1,0],[1,1]], 1), ([[1,1]], 3)] `shouldBe` return [(fromList [Ou],[0]),(fromList [],[1,2,3]),(fromList [Gi,Ka,Ou],[1,2,3,0])]
+
+    describe "simple check" $ do
+      it "(0,-2)*2" $
+        check [[[0,-2]],[[0,-2]]] `shouldBe` return ([set[Ky,Hi],set[Ky,Hi]], set[])
+      it "(0,-2)*2, (0,2)*1" $
+        check [[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` return ([set[Ky],set[Ky],set[Hi]], set[Ky,Hi])
+
+    describe "ou check"$ do
+      it "(1,0)(1,1)*1, (1,1)*2" $
+        checkFromNums [([[1,0],[1,1]], 1), ([[1,1]], 2)] `shouldBe` return ([set[Ou],set[Gi,Ka],set[Gi,Ka]], set[Ou])
+      it "(1,0)(1,1)*1, (1,1)*3" $
+        checkFromNums [([[1,0],[1,1]], 1), ([[1,1]], 3)] `shouldBe` return ([set[Ou],set[Gi,Ka],set[Gi,Ka],set[Gi,Ka]], set[Ou,Gi,Ka])

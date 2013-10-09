@@ -1,6 +1,6 @@
 module Quantum where
 import Data.Map as M hiding(map, filter, null, union, foldr)
-import Data.Set as S hiding(map, filter, null, foldr)
+import Data.Set as S hiding(map, filter, foldr)
 import Data.List --(intercalate, nub, foldr1, union, foldr, group)
 import Control.Monad(filterM)
 import Control.Monad.Error
@@ -91,6 +91,35 @@ checkMaxFromMove moves = moves2superPieces moves >>= checkMaxFromSuperPiece
 
 checkMaxFromNums :: [([Move], Int)]->ThrowsError Result
 checkMaxFromNums = checkMaxFromMove. nums2moves
+
+assign1 :: [(SuperPiece, [Index])]->Maybe ((SuperPiece, [Index]), [(SuperPiece, [Index])])
+assign1 xs = do
+    x@(sp, is) <- find ((==1). S.size. fst)$ xs
+    return (x, map (\(sp1, is1)->((S.\\)sp1 sp, (Data.List.\\) is1 is))$ filter(/=x)xs)
+
+assign :: [(SuperPiece, [Index])]->([(SuperPiece, [Index])], [(SuperPiece, [Index])])
+assign xs = case assign1 xs' of
+              Nothing->([], xs')
+              Just (pi, others)->let (ys, remain)=assign others in (pi:ys, remain)
+  where xs' = filter(not. S.null. fst) xs
+
+assign2list :: Int->([(SuperPiece, [Index])], [(SuperPiece, [Index])]) -> [[Piece]]
+assign2list len (x, y)= a2l 0$ sortBy(\(_,i1) (_,i2)->compare i1 i2)$ unwind(x++y)
+  where a2l n [] = replicate (len-n) []
+        a2l n xss@(x@(sp,i):xs)|n==i = S.toList sp:a2l (n+1) xs
+                           |otherwise = []:a2l (n+1) xss
+        unwind xs = concat. map (\(sp, is)->[(sp, i)|i<-is])$ xs
+
+check :: [[Move]]->ThrowsError([SuperPiece], SuperPiece)
+check mvs = do
+    sps <- moves2superPieces mvs
+    detail <- checkMaxDetailedFromMove mvs
+    let ps = assign2list (length mvs). assign$ detail
+    let fulls = foldr S.union S.empty$ map fst detail
+    return (map(\(p, sp)->if p==[] then ((S.\\) sp fulls) else S.fromList p)$ zip ps sps, fulls)
+
+checkFromNums :: [([Move], Int)]->ThrowsError([SuperPiece],SuperPiece)
+checkFromNums = check. nums2moves
 
 -- utils
 
