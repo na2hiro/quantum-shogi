@@ -5,12 +5,23 @@ import Data.List --(intercalate, nub, foldr1, union, foldr, group)
 import Control.Monad(filterM)
 import Control.Monad.Error
 
-data Piece = Fu | Ky | Ke | Gi | Ki | Ka | Hi | Ou deriving (Show, Eq, Ord)
+data Piece = Fu | Ky | Ke | Gi | Ki | Ka | Hi | Ou deriving (Eq, Ord)
 type Move = [Int]
 type SuperPiece = Set Piece
 type Result = SuperPiece
 type DetailedResult = [(SuperPiece, [Index])]
 type Index = Int
+
+showPiece Fu = "aa"
+showPiece Ky = "ab"
+showPiece Ke = "ac"
+showPiece Gi = "ad"
+showPiece Ki = "ae"
+showPiece Ka = "af"
+showPiece Hi = "ag"
+showPiece Ou = "ah"
+
+instance Show Piece where show = showPiece
 
 data MyError = InvalidMoveCombination Index
              | InvalidMove Index Index 
