@@ -9,6 +9,7 @@ data Piece = Fu | Ky | Ke | Gi | Ki | Ka | Hi | Ou deriving (Show, Eq, Ord)
 type Move = [Int]
 type SuperPiece = Set Piece
 type Result = SuperPiece
+type DetailedResult = [(SuperPiece, [Index])]
 type Index = Int
 
 data MyError = InvalidMoveCombination Index
@@ -59,36 +60,52 @@ subset :: [a]->[[a]]
 subset = filterM$ const [False,True]
 subsetNonEmpty =  tail.subset
 
-count :: (Eq a, Ord a)=>[a]->[(a,Int)]
-count xs = map (\xs->(xs!!0, length xs))$Data.List.group$ Data.List.sort xs
+countWithIndices :: (Eq a, Ord a)=>[a]->[(a,[Index])]
+countWithIndices xs = map (\xs->(fst(xs!!0), map snd xs))$groupBy fstEq$ sortBy fstOrd$ zip xs [0..]
+  where fstOrd (a,_) (b,_) = compare a b
+        fstEq (a,_) (b,_) = a==b
 
-countsUnion = map(foldr1 (\(s1,c1) (s2,c2)->(S.union s1 s2, c1+c2))). subsetNonEmpty
+countsUnionWithIndices = map(foldr1 (\(s1,l1) (s2,l2)->(S.union s1 s2, l1++l2))). subsetNonEmpty
 
-checkMaxFromUnion :: [(SuperPiece, Int)] -> ThrowsError Result
-checkMaxFromUnion = liftM (foldr S.union S.empty). mapM f
-  where f (set, cnt) = case cnt `compare` calcMax set of 
-                         EQ->return set
-                         LT->return (S.empty)
+checkMaxFromUnion :: [(SuperPiece, [Index])] -> ThrowsError Result
+checkMaxFromUnion = liftM (foldr S.union S.empty). liftM (map fst). checkMaxDetailedFromUnion
+
+checkMaxDetailedFromUnion :: [(SuperPiece, [Index])]->ThrowsError [(SuperPiece, [Index])]
+checkMaxDetailedFromUnion = mapM f
+  where f (set, is) = let cnt=length is in case cnt `compare` calcMax set of 
+                         EQ->return (set, is)
+                         LT->return (S.empty, is)
                          GT->throwError$ PieceExhausted set cnt
 
+checkMaxDetailedFromMove ::  [[Move]]->ThrowsError DetailedResult
+checkMaxDetailedFromMove moves = moves2superPieces moves >>= superPiece2union >>= checkMaxDetailedFromUnion
+
+checkMaxDetailedFromNums ::  [([Move], Int)]->ThrowsError DetailedResult
+checkMaxDetailedFromNums nums = moves2superPieces (nums2moves nums)>>= superPiece2union >>= checkMaxDetailedFromUnion
+
 checkMaxFromSuperPiece :: [SuperPiece]->ThrowsError Result
-checkMaxFromSuperPiece supers = mapM f (zip [0..] supers) >>= checkMaxFromUnion. countsUnion. count
-  where f (i, sup) = if sup==S.fromList[] then throwError$ InvalidMoveCombination i else return sup
+checkMaxFromSuperPiece supers = superPiece2union supers >>= checkMaxFromUnion
 
 checkMaxFromMove :: [[Move]]->ThrowsError Result
-checkMaxFromMove moves = mapM superPieceFromMoves (zip [0..] moves) >>= checkMaxFromSuperPiece
-
-superPieceFromMoves :: (Index,[Move])->ThrowsError SuperPiece
-superPieceFromMoves (index, moves) = liftM (foldr1 S.intersection). mapM f$ zip [0..] moves
-  where f (i,m) = case M.lookup m movingBoard of
-                    Just sp->return sp
-                    Nothing->throwError$ InvalidMove index i
-
-superPieceListFromMoves :: [[Move]]->ThrowsError [SuperPiece]
-superPieceListFromMoves = mapM superPieceFromMoves. zip [0..]
+checkMaxFromMove moves = moves2superPieces moves >>= checkMaxFromSuperPiece
 
 checkMaxFromNums :: [([Move], Int)]->ThrowsError Result
 checkMaxFromNums = checkMaxFromMove. nums2moves
 
+-- utils
+
 nums2moves :: [([Move], Int)]->[[Move]]
 nums2moves = concat. map (\(mvs, n)->replicate n mvs)
+
+move2superPiece :: (Index,[Move])->ThrowsError SuperPiece
+move2superPiece (index, moves) = liftM (foldr1 S.intersection). mapM f$ zip [0..] moves
+  where f (i,m) = case M.lookup m movingBoard of
+                    Just sp->return sp
+                    Nothing->throwError$ InvalidMove index i
+
+moves2superPieces :: [[Move]]->ThrowsError [SuperPiece]
+moves2superPieces = mapM move2superPiece. zip [0..]
+
+superPiece2union :: [SuperPiece]->ThrowsError [(SuperPiece, [Index])]
+superPiece2union supers = liftM (countsUnionWithIndices. countWithIndices)$ mapM f (zip [0..] supers) 
+  where f (i, sup) = if sup==S.fromList[] then throwError$ InvalidMoveCombination i else return sup

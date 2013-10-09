@@ -46,3 +46,13 @@ spec = do
         checkMaxFromNums [([[1,0],[1,1]], 1), ([[0,1]], 3)] `shouldBe` return (set[Ki,Hi,Ou])
       it "(1,0)(1,1)*1, (0,1)*4" $
         checkMaxFromNums [([[1,0],[1,1]], 1), ([[0,1]], 4)] `shouldBe` Left (PieceExhausted (set[Ki,Hi,Ou]) 5)
+    describe "simple detailed" $ do
+      it "(0,-2)*2" $
+        checkMaxDetailedFromMove [[[0,-2]],[[0,-2]]] `shouldBe` return [(set[],[0,1])]
+      it "(0,-2)*2, (0,2)*1" $
+        checkMaxDetailedFromMove [[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` return [(set[Hi],[2]),(set[],[0,1]),(set[Ky,Hi],[0,1,2])]
+    describe "ou detailed"$ do
+      it "(1,0)(1,1)*1, (1,1)*2" $
+        checkMaxDetailedFromNums [([[1,0],[1,1]], 1), ([[1,1]], 2)] `shouldBe` return [(fromList [Ou],[0]),(fromList [],[1,2]),(fromList [],[1,2,0])]
+      it "(1,0)(1,1)*1, (1,1)*3" $
+        checkMaxDetailedFromNums [([[1,0],[1,1]], 1), ([[1,1]], 3)] `shouldBe` return [(fromList [Ou],[0]),(fromList [],[1,2,3]),(fromList [Gi,Ka,Ou],[1,2,3,0])]
