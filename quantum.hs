@@ -5,7 +5,7 @@ import Data.List --(intercalate, nub, foldr1, union, foldr, group)
 import Control.Monad(filterM)
 import Control.Monad.Error
 
-data Piece = Fu | Ky | Ke | Gi | Ki | Ka | Hi | Ou deriving (Eq, Ord, Show)
+data Piece = Fu | Ky | Ke | Gi | Ki | Ka | Hi | Ou deriving (Eq, Ord, Show, Read)
 type Move = [Int]
 type SuperPiece = Set Piece
 type Result = ([SuperPiece], SuperPiece)
