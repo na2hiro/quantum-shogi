@@ -11,6 +11,8 @@ type SuperPiece = Set Piece
 type Result = SuperPiece
 type DetailedResult = [(SuperPiece, [Index])]
 type Index = Int
+type Log = (Move, Promote)
+type Promote = Bool
 
 showPiece Fu = "aa"
 showPiece Ky = "ab"
@@ -42,21 +44,30 @@ instance Show MyError where show = showError
 
 type ThrowsError = Either MyError
 
-move :: Piece->[Move]
-move Fu = [[0,-1]]
-move Ky = [[0,-1],[0,-2]]
-move Ke = [[-1,-2],[1,-2]]
-move Gi = [[1,-1],[0,-1],[-1,-1],[1,1],[-1,1]]
-move Ki = [[1,-1],[0,-1],[-1,-1],[1,0],[-1,0],[0,1]]
-move Ka = [[1,-1],[-1,-1],[1,1],[-1,1],[2,-2],[-2,-2],[2,2],[-2,2]]
-move Hi = [[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]
-move Ou = [[1,-1],[-1,-1],[1,1],[-1,1],[1,0],[-1,0],[0,1],[0,-1]]
+kin = [[1,-1],[0,-1],[-1,-1],[1,0],[-1,0],[0,1]]
+move :: Piece->Bool->[Move]
+move Fu False = [[0,-1]]
+move Ky False = [[0,-1],[0,-2]]
+move Ke False = [[-1,-2],[1,-2]]
+move Gi False = [[1,-1],[0,-1],[-1,-1],[1,1],[-1,1]]
+move Ki False = [[1,-1],[0,-1],[-1,-1],[1,0],[-1,0],[0,1]]
+move Ka False = [[1,-1],[-1,-1],[1,1],[-1,1],[2,-2],[-2,-2],[2,2],[-2,2]]
+move Hi False = [[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]
+move Ou False = [[1,-1],[-1,-1],[1,1],[-1,1],[1,0],[-1,0],[0,1],[0,-1]]
+move Fu True = kin
+move Ky True = kin 
+move Ke True = kin 
+move Gi True = kin 
+move Ki True = []
+move Ka True = [[1,0],[-1,0],[0,1],[0,-1],[1,-1],[-1,-1],[1,1],[-1,1],[2,-2],[-2,-2],[2,2],[-2,2]]
+move Hi True = [[1,-1],[-1,-1],[1,1],[-1,1],[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]
+move Ou True = []
 
 initialPieces :: [(Piece, Int)]
 initialPieces = [(Fu, 9), (Ky, 2), (Ke, 2), (Gi, 2), (Ki, 2), (Ka, 1), (Hi, 1), (Ou, 1)]
 
-movingBoard :: Map Move SuperPiece
-movingBoard = Data.List.foldr f M.empty [(mov, piece)|(piece, num)<-initialPieces, mov<-move piece]
+movingBoard :: Bool->Map Move SuperPiece
+movingBoard prom = Data.List.foldr f M.empty [(mov, piece)|(piece, num)<-initialPieces, mov<-move piece prom]
   where f (mv, p) mp = case M.lookup mv mp of
                          Just set->M.insert mv (S.insert p set) mp
                          Nothing->M.insert mv (S.insert p S.empty) mp
@@ -88,20 +99,35 @@ checkMaxDetailedFromUnion = mapM f
                          LT->return (S.empty, is)
                          GT->throwError$ PieceExhausted set cnt
 
-checkMaxDetailedFromMove ::  [[Move]]->ThrowsError DetailedResult
-checkMaxDetailedFromMove moves = moves2superPieces moves >>= superPiece2union >>= checkMaxDetailedFromUnion
+checkMaxDetailedFromMove ::  [[Log]]->ThrowsError DetailedResult
+checkMaxDetailedFromMove logs = moves2superPieces logs >>= superPiece2union >>= checkMaxDetailedFromUnion
 
-checkMaxDetailedFromNums ::  [([Move], Int)]->ThrowsError DetailedResult
+checkMaxDetailedFromMoveUnpromoted ::  [[Move]]->ThrowsError DetailedResult
+checkMaxDetailedFromMoveUnpromoted = checkMaxDetailedFromMove. map enpromote
+
+checkMaxDetailedFromNums ::  [([Log], Int)]->ThrowsError DetailedResult
 checkMaxDetailedFromNums nums = moves2superPieces (nums2moves nums)>>= superPiece2union >>= checkMaxDetailedFromUnion
+
+checkMaxDetailedFromNumsUnpromoted ::  [([Move], Int)]->ThrowsError DetailedResult
+checkMaxDetailedFromNumsUnpromoted = checkMaxDetailedFromNums. map (\(mvs, i)->(enpromote mvs, i))
 
 checkMaxFromSuperPiece :: [SuperPiece]->ThrowsError Result
 checkMaxFromSuperPiece supers = superPiece2union supers >>= checkMaxFromUnion
 
-checkMaxFromMove :: [[Move]]->ThrowsError Result
-checkMaxFromMove moves = moves2superPieces moves >>= checkMaxFromSuperPiece
+checkMaxFromMove :: [[Log]]->ThrowsError Result
+checkMaxFromMove logs = moves2superPieces logs >>= checkMaxFromSuperPiece
 
-checkMaxFromNums :: [([Move], Int)]->ThrowsError Result
+checkMaxFromMoveUnpromoted :: [[Move]]->ThrowsError Result
+checkMaxFromMoveUnpromoted moves = checkMaxFromMove$ map enpromote moves
+
+checkMaxFromNums :: [([Log], Int)]->ThrowsError Result
 checkMaxFromNums = checkMaxFromMove. nums2moves
+
+checkMaxFromNumsUnpromoted :: [([Move], Int)]->ThrowsError Result
+checkMaxFromNumsUnpromoted = checkMaxFromMove. nums2moves. map (\(ms, i)->(enpromote ms, i))
+
+enpromote :: [Move]->[Log]
+enpromote = flip zip (repeat False)
 
 assign1 :: [(SuperPiece, [Index])]->Maybe ((SuperPiece, [Index]), [(SuperPiece, [Index])])
 assign1 xs = do
@@ -121,29 +147,35 @@ assign2list len (x, y)= a2l 0$ sortBy(\(_,i1) (_,i2)->compare i1 i2)$ unwind(x++
                            |otherwise = []:a2l (n+1) xss
         unwind xs = concat. map (\(sp, is)->[(sp, i)|i<-is])$ xs
 
-check :: [[Move]]->ThrowsError([SuperPiece], SuperPiece)
-check mvs = do
-    sps <- moves2superPieces mvs
-    detail <- checkMaxDetailedFromMove mvs
-    let ps = assign2list (length mvs). assign$ detail
+check :: [[Log]]->ThrowsError([SuperPiece], SuperPiece)
+check lgs = do
+    sps <- moves2superPieces lgs
+    detail <- checkMaxDetailedFromMove lgs
+    let ps = assign2list (length lgs). assign$ detail
     let fulls = foldr S.union S.empty$ map fst detail
     return (map(\(p, sp)->if p==[] then ((S.\\) sp fulls) else S.fromList p)$ zip ps sps, fulls)
 
-checkFromNums :: [([Move], Int)]->ThrowsError([SuperPiece],SuperPiece)
+checkUnpromoted :: [[Move]]->ThrowsError([SuperPiece], SuperPiece)
+checkUnpromoted = check. map enpromote
+
+checkFromNums :: [([Log], Int)]->ThrowsError([SuperPiece],SuperPiece)
 checkFromNums = check. nums2moves
+
+checkFromNumsUnpromoted :: [([Move], Int)]->ThrowsError([SuperPiece],SuperPiece)
+checkFromNumsUnpromoted = checkFromNums. map (\(mvs, i)->(enpromote mvs, i))
 
 -- utils
 
-nums2moves :: [([Move], Int)]->[[Move]]
+nums2moves :: [([Log], Int)]->[[Log]]
 nums2moves = concat. map (\(mvs, n)->replicate n mvs)
 
-move2superPiece :: (Index,[Move])->ThrowsError SuperPiece
-move2superPiece (index, moves) = liftM (foldr1 S.intersection). mapM f$ zip [0..] moves
-  where f (i,m) = case M.lookup m movingBoard of
+move2superPiece :: (Index,[Log])->ThrowsError SuperPiece
+move2superPiece (index, logs) = liftM (foldr1 S.intersection). mapM f$ zip [0..] logs
+  where f (i,(m, prom)) = case M.lookup m (movingBoard prom) of
                     Just sp->return sp
                     Nothing->throwError$ InvalidMove index i
 
-moves2superPieces :: [[Move]]->ThrowsError [SuperPiece]
+moves2superPieces :: [[Log]]->ThrowsError [SuperPiece]
 moves2superPieces = mapM move2superPiece. zip [0..]
 
 superPiece2union :: [SuperPiece]->ThrowsError [(SuperPiece, [Index])]
