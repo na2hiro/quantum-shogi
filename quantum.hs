@@ -161,3 +161,14 @@ moves2superPieces = mapM move2superPiece. zip [0..]
 superPiece2union :: [SuperPiece]->ThrowsError Possibilities 
 superPiece2union supers = liftM (countsUnionWithIndices. countWithIndices)$ mapM f (zip [0..] supers) 
   where f (i, sup) = if sup==S.fromList[] then throwError$ InvalidMoveCombination i else return sup
+
+applyNth :: Int->(a->a)->[a]->[a]
+applyNth n f xs = take n xs ++ f (xs!!n) : drop (n+1) xs
+
+step :: Int->Log->Promote->[SuperPiece]->ThrowsError ([SuperPiece], SuperPiece)
+step iden log promnow sps = do
+    super <- move2superPiece (0, [log])
+    let newsps = if iden<length sps
+                   then applyNth iden (S.intersection super) sps
+                   else sps++[super]
+    getResult newsps

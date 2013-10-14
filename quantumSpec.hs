@@ -1,6 +1,7 @@
 import Test.Hspec
 import Quantum 
 import Data.Set as S(fromList, empty)
+import Control.Monad(liftM)
 
 set = S.fromList
 
@@ -75,3 +76,20 @@ spec = do
         check [[([0,-2], True)]] `shouldBe` return ([set[Hi]], set[Hi])
       it "(1,1)nari(1,1)*1" $
         check [[([1,1], True),([1,1],False)]] `shouldBe` return ([set[Ka]], set[Ka])
+
+    describe "simple step"$ do
+      let a = step 0 ([0,-2], False) False []
+      it "move 0 (0,-2)" $
+        a `shouldBe` return ([set[Ky,Hi]],set[])
+      let b = (liftM fst$ a) >>= step 1 ([0,-2], False) False 
+      it "move 1 (0,-2)" $
+        b `shouldBe` return (replicate 2$ set[Ky,Hi],set[])
+      let c = (liftM fst$ b) >>= step 2 ([0,-2], False) False
+      it "move 2 (0,-2)" $
+        c `shouldBe` return (replicate 3$ set[Ky,Hi],set[Ky,Hi])
+      let d = (liftM fst$ c) >>= step 2 ([0,2], False) False
+      it "move 2 (0,2)" $
+        d `shouldBe` return ((replicate 2$ set[Ky])++[set[Hi]],set[Ky,Hi])
+      let e = (liftM fst$ d) >>= step 3 ([0,2], False) False
+      it "move 3 (0,-2)" $
+        e `shouldBe` Left (PieceExhausted (set[Hi]) 2)
