@@ -1,11 +1,11 @@
 module Quantum where
-import Data.Map as M hiding(map, filter, null, union, foldr)
+import Data.Map as M hiding(map, filter, null, union, foldr, unions)
 import Data.Set as S hiding(map, filter, foldr)
 import Data.List --(intercalate, nub, foldr1, union, foldr, group)
 import Control.Monad(filterM)
 import Control.Monad.Error
 
-data Piece = Fu | Ky | Ke | Gi | Ki | Ka | Hi | Ou deriving (Eq, Ord)
+data Piece = Fu | Ky | Ke | Gi | Ki | Ka | Hi | Ou deriving (Eq, Ord, Show)
 type Move = [Int]
 type SuperPiece = Set Piece
 type Result = SuperPiece
@@ -13,7 +13,7 @@ type DetailedResult = [(SuperPiece, [Index])]
 type Index = Int
 type Log = (Move, Promote)
 type Promote = Bool
-
+{-
 showPiece Fu = "aa"
 showPiece Ky = "ab"
 showPiece Ke = "ac"
@@ -22,8 +22,8 @@ showPiece Ki = "ae"
 showPiece Ka = "af"
 showPiece Hi = "ag"
 showPiece Ou = "ah"
-
 instance Show Piece where show = showPiece
+-}
 
 data MyError = InvalidMoveCombination Index
              | InvalidMove Index Index 
@@ -90,7 +90,7 @@ countWithIndices xs = map (\xs->(fst(xs!!0), map snd xs))$groupBy fstEq$ sortBy 
 countsUnionWithIndices = map(foldr1 (\(s1,l1) (s2,l2)->(S.union s1 s2, l1++l2))). subsetNonEmpty
 
 checkMaxFromUnion :: [(SuperPiece, [Index])] -> ThrowsError Result
-checkMaxFromUnion = liftM (foldr S.union S.empty). liftM (map fst). checkMaxDetailedFromUnion
+checkMaxFromUnion = liftM unions. liftM (map fst). checkMaxDetailedFromUnion
 
 checkMaxDetailedFromUnion :: [(SuperPiece, [Index])]->ThrowsError [(SuperPiece, [Index])]
 checkMaxDetailedFromUnion = mapM f
@@ -105,12 +105,6 @@ checkMaxDetailedFromMove logs = moves2superPieces logs >>= superPiece2union >>= 
 checkMaxDetailedFromMoveUnpromoted ::  [[Move]]->ThrowsError DetailedResult
 checkMaxDetailedFromMoveUnpromoted = checkMaxDetailedFromMove. map enpromote
 
-checkMaxDetailedFromNums ::  [([Log], Int)]->ThrowsError DetailedResult
-checkMaxDetailedFromNums nums = moves2superPieces (nums2moves nums)>>= superPiece2union >>= checkMaxDetailedFromUnion
-
-checkMaxDetailedFromNumsUnpromoted ::  [([Move], Int)]->ThrowsError DetailedResult
-checkMaxDetailedFromNumsUnpromoted = checkMaxDetailedFromNums. map (\(mvs, i)->(enpromote mvs, i))
-
 checkMaxFromSuperPiece :: [SuperPiece]->ThrowsError Result
 checkMaxFromSuperPiece supers = superPiece2union supers >>= checkMaxFromUnion
 
@@ -119,12 +113,6 @@ checkMaxFromMove logs = moves2superPieces logs >>= checkMaxFromSuperPiece
 
 checkMaxFromMoveUnpromoted :: [[Move]]->ThrowsError Result
 checkMaxFromMoveUnpromoted moves = checkMaxFromMove$ map enpromote moves
-
-checkMaxFromNums :: [([Log], Int)]->ThrowsError Result
-checkMaxFromNums = checkMaxFromMove. nums2moves
-
-checkMaxFromNumsUnpromoted :: [([Move], Int)]->ThrowsError Result
-checkMaxFromNumsUnpromoted = checkMaxFromMove. nums2moves. map (\(ms, i)->(enpromote ms, i))
 
 enpromote :: [Move]->[Log]
 enpromote = flip zip (repeat False)
@@ -152,22 +140,13 @@ check lgs = do
     sps <- moves2superPieces lgs
     detail <- checkMaxDetailedFromMove lgs
     let ps = assign2list (length lgs). assign$ detail
-    let fulls = foldr S.union S.empty$ map fst detail
+    let fulls = unions$ map fst detail
     return (map(\(p, sp)->if p==[] then ((S.\\) sp fulls) else S.fromList p)$ zip ps sps, fulls)
 
 checkUnpromoted :: [[Move]]->ThrowsError([SuperPiece], SuperPiece)
 checkUnpromoted = check. map enpromote
 
-checkFromNums :: [([Log], Int)]->ThrowsError([SuperPiece],SuperPiece)
-checkFromNums = check. nums2moves
-
-checkFromNumsUnpromoted :: [([Move], Int)]->ThrowsError([SuperPiece],SuperPiece)
-checkFromNumsUnpromoted = checkFromNums. map (\(mvs, i)->(enpromote mvs, i))
-
 -- utils
-
-nums2moves :: [([Log], Int)]->[[Log]]
-nums2moves = concat. map (\(mvs, n)->replicate n mvs)
 
 move2superPiece :: (Index,[Log])->ThrowsError SuperPiece
 move2superPiece (index, logs) = liftM (foldr1 S.intersection). mapM f$ zip [0..] logs

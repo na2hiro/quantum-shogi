@@ -7,7 +7,7 @@ import System.Environment(getArgs)
 import Data.Set as S hiding(map)
 main = do
     args<-getArgs
-    putStrLn$ encodeJSON$ toJ$ check(read(concat args)::[[Move]])
+    putStrLn$ encodeJSON$ toJ$ check(read(concat args)::[[Log]])
 
 enc = encodeJSON Json{err=False, message="hoge",kinds=[],fulls=[]}
 
