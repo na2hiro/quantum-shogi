@@ -8,55 +8,55 @@ spec :: Spec
 spec = do
     describe "simple" $ do
       it "Hi Ky*3, Hi*1" $
-        checkMaxFromMoveUnpromoted [[[0,-2]],[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` Left (PieceExhausted (set[Ky,Hi]) 4)
+        getLimitedUnpromoted [[[0,-2]],[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` Left (PieceExhausted (set[Ky,Hi]) 4)
       it "Hi Ky*2" $
-        checkMaxFromMoveUnpromoted [[[0,-2]],[[0,-2]]] `shouldBe` return (set[])
+        getLimitedUnpromoted [[[0,-2]],[[0,-2]]] `shouldBe` return (set[])
       it "Hi Ky*2, Hi*1" $
-        checkMaxFromMoveUnpromoted [[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` return (set[Ky,Hi])
+        getLimitedUnpromoted [[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` return (set[Ky,Hi])
       it "Hi Ky*1, Hi*2" $
-        checkMaxFromMoveUnpromoted [[[0,-2]],[[0,2]],[[0,2]]] `shouldBe` Left (PieceExhausted (set[Hi]) 2)
+        getLimitedUnpromoted [[[0,-2]],[[0,2]],[[0,2]]] `shouldBe` Left (PieceExhausted (set[Hi]) 2)
       it "Hi*2" $
-        checkMaxFromMoveUnpromoted [[[0,-2],[1,0]],[[0,2]]] `shouldBe` Left (PieceExhausted (set[Hi]) 2)
+        getLimitedUnpromoted [[[0,-2],[1,0]],[[0,2]]] `shouldBe` Left (PieceExhausted (set[Hi]) 2)
       it "(1,1)*4" $
-        checkMaxFromMoveUnpromoted [[[1,1]],[[1,1]],[[1,1]],[[1,1]]] `shouldBe` return (set[Ka,Gi,Ou])
+        getLimitedUnpromoted [[[1,1]],[[1,1]],[[1,1]],[[1,1]]] `shouldBe` return (set[Ka,Gi,Ou])
       it "(1,1)*5" $
-        checkMaxFromMoveUnpromoted [[[1,1]],[[1,1]],[[1,1]],[[1,1]],[[1,1]]] `shouldBe` Left (PieceExhausted (set[Gi,Ka,Ou]) 5)
+        getLimitedUnpromoted [[[1,1]],[[1,1]],[[1,1]],[[1,1]],[[1,1]]] `shouldBe` Left (PieceExhausted (set[Gi,Ka,Ou]) 5)
       it "(1,1)*4, (2,2)*1" $
-        checkMaxFromMoveUnpromoted [[[1,1]],[[1,1]],[[1,1]],[[1,1]],[[2,2]]] `shouldBe` Left (PieceExhausted (set[Gi,Ka,Ou]) 5)
+        getLimitedUnpromoted [[[1,1]],[[1,1]],[[1,1]],[[1,1]],[[2,2]]] `shouldBe` Left (PieceExhausted (set[Gi,Ka,Ou]) 5)
       it "(1,1)*3, (2,2)*1" $
-        checkMaxFromMoveUnpromoted [[[1,1]],[[1,1]],[[1,1]],[[2,2]]] `shouldBe` return (set[Ka,Gi,Ou])
+        getLimitedUnpromoted [[[1,1]],[[1,1]],[[1,1]],[[2,2]]] `shouldBe` return (set[Ka,Gi,Ou])
       it "(1,-2)(-1,-1)*1" $
-        checkMaxFromMoveUnpromoted ([[0,-1]]:[[1,-2],[-1,-1]]:[]) `shouldBe` Left (InvalidMoveCombination 1)
+        getLimitedUnpromoted ([[0,-1]]:[[1,-2],[-1,-1]]:[]) `shouldBe` Left (InvalidMoveCombination 1)
       it "(1,-3)*1" $
-        checkMaxFromMoveUnpromoted [[[1,1]], [[-1,-2]], [[1,-3]]] `shouldBe` Left (InvalidMove 2 0)
+        getLimitedUnpromoted [[[1,1]], [[-1,-2]], [[1,-3]]] `shouldBe` Left (InvalidMove 2 0)
       it "(1,1)*2 (1,0)*2 (1,-1)*3" $
-        checkMaxFromMoveUnpromoted (replicate 2 [[1,1]] ++ replicate 2 [[1,0]] ++ replicate 3 [[1,-1]]) `shouldBe` return (set [Gi,Ki,Ka,Hi,Ou])
+        getLimitedUnpromoted (replicate 2 [[1,1]] ++ replicate 2 [[1,0]] ++ replicate 3 [[1,-1]]) `shouldBe` return (set [Gi,Ki,Ka,Hi,Ou])
     describe "ou" $do
       it "(1,0)(1,1)*1" $
-        checkMaxFromMoveUnpromoted [[[1,0],[1,1]]] `shouldBe` return (set [Ou])
+        getLimitedUnpromoted [[[1,0],[1,1]]] `shouldBe` return (set [Ou])
       it "(1,0)(1,1)*2" $
-        checkMaxFromMoveUnpromoted (replicate 2 [[1,0],[1,1]]) `shouldBe` Left (PieceExhausted (set [Ou]) 2)
+        getLimitedUnpromoted (replicate 2 [[1,0],[1,1]]) `shouldBe` Left (PieceExhausted (set [Ou]) 2)
       it "(1,0)(1,1)*1, (1,1)*2" $
-        checkMaxFromMoveUnpromoted ([[1,0],[1,1]]:replicate 2 [[1,1]]) `shouldBe` return (set[Ou])
+        getLimitedUnpromoted ([[1,0],[1,1]]:replicate 2 [[1,1]]) `shouldBe` return (set[Ou])
       it "(1,0)(1,1)*1, (1,1)*3" $
-        checkMaxFromMoveUnpromoted ([[1,0],[1,1]]:replicate 3 [[1,1]]) `shouldBe` return (set[Ka,Gi,Ou])
+        getLimitedUnpromoted ([[1,0],[1,1]]:replicate 3 [[1,1]]) `shouldBe` return (set[Ka,Gi,Ou])
       it "(1,0)(1,1)*1, (1,1)*4" $
-        checkMaxFromMoveUnpromoted ([[1,0],[1,1]]:replicate 4 [[1,1]]) `shouldBe` Left (PieceExhausted (set[Gi,Ka,Ou]) 5)
+        getLimitedUnpromoted ([[1,0],[1,1]]:replicate 4 [[1,1]]) `shouldBe` Left (PieceExhausted (set[Gi,Ka,Ou]) 5)
       it "(1,0)(1,1)*1, (0,1)*3" $
-        checkMaxFromMoveUnpromoted ([[1,0],[1,1]]:replicate 3 [[0,1]]) `shouldBe` return (set[Ki,Hi,Ou])
+        getLimitedUnpromoted ([[1,0],[1,1]]:replicate 3 [[0,1]]) `shouldBe` return (set[Ki,Hi,Ou])
       it "(1,0)(1,1)*1, (0,1)*4" $
-        checkMaxFromMoveUnpromoted ([[1,0],[1,1]]:replicate 4 [[0,1]]) `shouldBe` Left (PieceExhausted (set[Ki,Hi,Ou]) 5)
+        getLimitedUnpromoted ([[1,0],[1,1]]:replicate 4 [[0,1]]) `shouldBe` Left (PieceExhausted (set[Ki,Hi,Ou]) 5)
     describe "simple detailed" $ do
       it "(0,-2)*2" $
-        checkMaxDetailedFromMoveUnpromoted [[[0,-2]],[[0,-2]]] `shouldBe` return [(set[],[0,1])]
+        checkFromMoveUnpromoted [[[0,-2]],[[0,-2]]] `shouldBe` return [(set[],[0,1])]
       it "(0,-2)*2, (0,2)*1" $
-        checkMaxDetailedFromMoveUnpromoted [[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` return [(set[Hi],[2]),(set[],[0,1]),(set[Ky,Hi],[0,1,2])]
+        checkFromMoveUnpromoted [[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` return [(set[Hi],[2]),(set[],[0,1]),(set[Ky,Hi],[0,1,2])]
 
     describe "ou detailed"$ do
       it "(1,0)(1,1)*1, (1,1)*2" $
-        checkMaxDetailedFromMoveUnpromoted ([[1,0],[1,1]]:replicate 2 [[1,1]]) `shouldBe` return [(fromList [Ou],[0]),(fromList [],[1,2]),(fromList [],[1,2,0])]
+        checkFromMoveUnpromoted ([[1,0],[1,1]]:replicate 2 [[1,1]]) `shouldBe` return [(fromList [Ou],[0]),(fromList [],[1,2]),(fromList [],[1,2,0])]
       it "(1,0)(1,1)*1, (1,1)*3" $
-        checkMaxDetailedFromMoveUnpromoted ([[1,0],[1,1]]:replicate 3 [[1,1]]) `shouldBe` return [(fromList [Ou],[0]),(fromList [],[1,2,3]),(fromList [Gi,Ka,Ou],[1,2,3,0])]
+        checkFromMoveUnpromoted ([[1,0],[1,1]]:replicate 3 [[1,1]]) `shouldBe` return [(fromList [Ou],[0]),(fromList [],[1,2,3]),(fromList [Gi,Ka,Ou],[1,2,3,0])]
 
     describe "simple check" $ do
       it "(0,-2)*2" $

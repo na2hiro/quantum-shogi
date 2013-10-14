@@ -8,8 +8,8 @@ import Control.Monad.Error
 data Piece = Fu | Ky | Ke | Gi | Ki | Ka | Hi | Ou deriving (Eq, Ord, Show)
 type Move = [Int]
 type SuperPiece = Set Piece
-type Result = SuperPiece
-type DetailedResult = [(SuperPiece, [Index])]
+type Result = ([SuperPiece], SuperPiece)
+type Possibilities = [(SuperPiece, [Index])]
 type Index = Int
 type Log = (Move, Promote)
 type Promote = Bool
@@ -89,57 +89,58 @@ countWithIndices xs = map (\xs->(fst(xs!!0), map snd xs))$groupBy fstEq$ sortBy 
 
 countsUnionWithIndices = map(foldr1 (\(s1,l1) (s2,l2)->(S.union s1 s2, l1++l2))). subsetNonEmpty
 
-checkMaxFromUnion :: [(SuperPiece, [Index])] -> ThrowsError Result
-checkMaxFromUnion = liftM unions. liftM (map fst). checkMaxDetailedFromUnion
+foldPossibilities :: Possibilities->SuperPiece
+foldPossibilities = unions. map fst
 
-checkMaxDetailedFromUnion :: [(SuperPiece, [Index])]->ThrowsError [(SuperPiece, [Index])]
-checkMaxDetailedFromUnion = mapM f
+checkPossibilities :: Possibilities->ThrowsError Possibilities
+checkPossibilities = mapM f
   where f (set, is) = let cnt=length is in case cnt `compare` calcMax set of 
                          EQ->return (set, is)
                          LT->return (S.empty, is)
                          GT->throwError$ PieceExhausted set cnt
 
-checkMaxDetailedFromMove ::  [[Log]]->ThrowsError DetailedResult
-checkMaxDetailedFromMove logs = moves2superPieces logs >>= superPiece2union >>= checkMaxDetailedFromUnion
+checkFromSuperPiece :: [SuperPiece]->ThrowsError Possibilities
+checkFromSuperPiece sps = superPiece2union sps >>= checkPossibilities
 
-checkMaxDetailedFromMoveUnpromoted ::  [[Move]]->ThrowsError DetailedResult
-checkMaxDetailedFromMoveUnpromoted = checkMaxDetailedFromMove. map enpromote
+checkFromMove ::  [[Log]]->ThrowsError Possibilities
+checkFromMove logs = moves2superPieces logs >>= checkFromSuperPiece
 
-checkMaxFromSuperPiece :: [SuperPiece]->ThrowsError Result
-checkMaxFromSuperPiece supers = superPiece2union supers >>= checkMaxFromUnion
+checkFromMoveUnpromoted ::  [[Move]]->ThrowsError Possibilities
+checkFromMoveUnpromoted = checkFromMove. map enpromote
 
-checkMaxFromMove :: [[Log]]->ThrowsError Result
-checkMaxFromMove logs = moves2superPieces logs >>= checkMaxFromSuperPiece
-
-checkMaxFromMoveUnpromoted :: [[Move]]->ThrowsError Result
-checkMaxFromMoveUnpromoted moves = checkMaxFromMove$ map enpromote moves
+getLimitedUnpromoted :: [[Move]]->ThrowsError SuperPiece
+getLimitedUnpromoted = liftM foldPossibilities. checkFromMove. map enpromote
 
 enpromote :: [Move]->[Log]
 enpromote = flip zip (repeat False)
 
-assign1 :: [(SuperPiece, [Index])]->Maybe ((SuperPiece, [Index]), [(SuperPiece, [Index])])
+assign1 :: Possibilities->Maybe ((SuperPiece, [Index]), Possibilities)
 assign1 xs = do
     x@(sp, is) <- find ((==1). S.size. fst)$ xs
     return (x, map (\(sp1, is1)->((S.\\)sp1 sp, (Data.List.\\) is1 is))$ filter(/=x)xs)
 
-assign :: [(SuperPiece, [Index])]->([(SuperPiece, [Index])], [(SuperPiece, [Index])])
+assign :: Possibilities->(Possibilities, Possibilities)
 assign xs = case assign1 xs' of
               Nothing->([], xs')
               Just (pi, others)->let (ys, remain)=assign others in (pi:ys, remain)
   where xs' = filter(not. S.null. fst) xs
 
-assign2list :: Int->([(SuperPiece, [Index])], [(SuperPiece, [Index])]) -> [[Piece]]
+assign2list :: Int->(Possibilities, Possibilities) -> [[Piece]]
 assign2list len (x, y)= a2l 0$ sortBy(\(_,i1) (_,i2)->compare i1 i2)$ unwind(x++y)
   where a2l n [] = replicate (len-n) []
         a2l n xss@(x@(sp,i):xs)|n==i = S.toList sp:a2l (n+1) xs
                            |otherwise = []:a2l (n+1) xss
         unwind xs = concat. map (\(sp, is)->[(sp, i)|i<-is])$ xs
 
-check :: [[Log]]->ThrowsError([SuperPiece], SuperPiece)
+check :: [[Log]]->ThrowsError Result
 check lgs = do
     sps <- moves2superPieces lgs
-    detail <- checkMaxDetailedFromMove lgs
-    let ps = assign2list (length lgs). assign$ detail
+    getResult sps
+
+getResult :: [SuperPiece]->ThrowsError Result
+getResult sps = do
+    detail <- checkFromSuperPiece sps
+    let ps = assign2list (length sps). assign$ detail
     let fulls = unions$ map fst detail
     return (map(\(p, sp)->if p==[] then ((S.\\) sp fulls) else S.fromList p)$ zip ps sps, fulls)
 
@@ -157,6 +158,6 @@ move2superPiece (index, logs) = liftM (foldr1 S.intersection). mapM f$ zip [0..]
 moves2superPieces :: [[Log]]->ThrowsError [SuperPiece]
 moves2superPieces = mapM move2superPiece. zip [0..]
 
-superPiece2union :: [SuperPiece]->ThrowsError [(SuperPiece, [Index])]
+superPiece2union :: [SuperPiece]->ThrowsError Possibilities 
 superPiece2union supers = liftM (countsUnionWithIndices. countWithIndices)$ mapM f (zip [0..] supers) 
   where f (i, sup) = if sup==S.fromList[] then throwError$ InvalidMoveCombination i else return sup
