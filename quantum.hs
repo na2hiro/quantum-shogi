@@ -44,6 +44,7 @@ instance Show MyError where show = showError
 
 type ThrowsError = Either MyError
 
+kin :: [Move]
 kin = [[1,-1],[0,-1],[-1,-1],[1,0],[-1,0],[0,1]]
 move :: Piece->Bool->[Move]
 move Fu False = [[0,-1]]
@@ -67,7 +68,7 @@ initialPieces :: [(Piece, Int)]
 initialPieces = [(Fu, 9), (Ky, 2), (Ke, 2), (Gi, 2), (Ki, 2), (Ka, 1), (Hi, 1), (Ou, 1)]
 
 movingBoard :: Bool->Map Move SuperPiece
-movingBoard prom = Data.List.foldr f M.empty [(mov, piece)|(piece, num)<-initialPieces, mov<-move piece prom]
+movingBoard prom = Data.List.foldr f M.empty [(mov, piece)|(piece, _)<-initialPieces, mov<-move piece prom]
   where f (mv, p) mp = case M.lookup mv mp of
                          Just set->M.insert mv (S.insert p set) mp
                          Nothing->M.insert mv (S.insert p S.empty) mp
@@ -76,18 +77,20 @@ showMap :: Map Move SuperPiece->String
 showMap board = intercalate "\n" [show p++"\t"++(show$ S.toList mvs)|(p,mvs)<-M.toList board]
 
 calcMax :: SuperPiece->Int
-calcMax set = foldr(+)0$ map snd$ filter (\(p, num)->S.member p set) initialPieces
+calcMax set = foldr(+)0$ map snd$ filter (\(p, _)->S.member p set) initialPieces
 
-subset :: [a]->[[a]]
-subset = filterM$ const [False,True]
-subsetNonEmpty =  tail.subset
+powerset :: [a]->[[a]]
+powerset = filterM$ const [False,True]
+powersetNonEmpty :: [a]->[[a]]
+powersetNonEmpty = tail.powerset
 
 countWithIndices :: (Eq a, Ord a)=>[a]->[(a,[Index])]
-countWithIndices xs = map (\xs->(fst(xs!!0), map snd xs))$groupBy fstEq$ sortBy fstOrd$ zip xs [0..]
+countWithIndices = map (\xs->(fst(xs!!0), map snd xs)). groupBy fstEq. sortBy fstOrd. flip zip [0..]
   where fstOrd (a,_) (b,_) = compare a b
         fstEq (a,_) (b,_) = a==b
 
-countsUnionWithIndices = map(foldr1 (\(s1,l1) (s2,l2)->(S.union s1 s2, l1++l2))). subsetNonEmpty
+countsUnionWithIndices :: Possibilities->Possibilities
+countsUnionWithIndices = map(foldr1 (\(s1,l1) (s2,l2)->(S.union s1 s2, l1++l2))). powersetNonEmpty
 
 foldPossibilities :: Possibilities->SuperPiece
 foldPossibilities = unions. map fst
@@ -122,13 +125,13 @@ assign1 xs = do
 assign :: Possibilities->(Possibilities, Possibilities)
 assign xs = case assign1 xs' of
               Nothing->([], xs')
-              Just (pi, others)->let (ys, remain)=assign others in (pi:ys, remain)
+              Just (p, others)->let (ys, remain)=assign others in (p:ys, remain)
   where xs' = filter(not. S.null. fst) xs
 
 assign2list :: Int->(Possibilities, Possibilities) -> [[Piece]]
 assign2list len (x, y)= a2l 0$ sortBy(\(_,i1) (_,i2)->compare i1 i2)$ unwind(x++y)
   where a2l n [] = replicate (len-n) []
-        a2l n xss@(x@(sp,i):xs)|n==i = S.toList sp:a2l (n+1) xs
+        a2l n xss@((sp,i):xs)|n==i = S.toList sp:a2l (n+1) xs
                            |otherwise = []:a2l (n+1) xss
         unwind xs = concat. map (\(sp, is)->[(sp, i)|i<-is])$ xs
 
@@ -162,13 +165,17 @@ superPiece2union :: [SuperPiece]->ThrowsError Possibilities
 superPiece2union supers = liftM (countsUnionWithIndices. countWithIndices)$ mapM f (zip [0..] supers) 
   where f (i, sup) = if sup==S.fromList[] then throwError$ InvalidMoveCombination i else return sup
 
+filterPromotion :: SuperPiece->SuperPiece
+filterPromotion = (`S.difference` S.fromList[Ki, Ou])
+
 applyNth :: Int->(a->a)->[a]->[a]
 applyNth n f xs = take n xs ++ f (xs!!n) : drop (n+1) xs
 
 step :: Int->Log->Promote->[SuperPiece]->ThrowsError ([SuperPiece], SuperPiece)
-step iden log promnow sps = do
-    super <- move2superPiece (0, [log])
+step iden lg promnow sps = do
+    super <- move2superPiece (0, [lg])
+    let sp = if promnow then filterPromotion super else super
     let newsps = if iden<length sps
-                   then applyNth iden (S.intersection super) sps
-                   else sps++[super]
+                   then applyNth iden (S.intersection sp) sps
+                   else sps++[sp]
     getResult newsps

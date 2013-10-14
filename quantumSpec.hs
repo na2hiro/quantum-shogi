@@ -93,3 +93,8 @@ spec = do
       let e = (liftM fst$ d) >>= step 3 ([0,2], False) False
       it "move 3 (0,-2)" $
         e `shouldBe` Left (PieceExhausted (set[Hi]) 2)
+
+    describe "promotenow"$ do
+      let a = step 1 ([1,1], False) True [set[Ka]]
+      it "move 1 (1,1)nari on 0=Ka" $
+        a `shouldBe` return ([set[Ka],set[Gi]],set[Ka])
