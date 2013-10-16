@@ -66,7 +66,7 @@ spec = do
         checkUnpromoted [[[0,-2]],[[0,-2]]] `shouldBe` return ([set[Ky,Hi],set[Ky,Hi]], set[])
       it "(0,-2)*2, (0,2)*1" $
         checkUnpromoted [[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` return ([set[Ky],set[Ky],set[Hi]], set[Ky,Hi])
-      it "(2,2)*2 (0,-2)*3" $
+      it "(2,2) (0,-2)*3" $
         checkUnpromoted ([[2,2]]:replicate 3 [[0,-2]]) `shouldBe` return (set[Ka]:replicate 3 (set[Ky,Hi]), set[Ka,Ky,Hi])
 
     describe "ou check"$ do
@@ -74,6 +74,14 @@ spec = do
         checkUnpromoted ([[1,0],[1,1]]:replicate 2 [[1,1]]) `shouldBe` return ([set[Ou],set[Gi,Ka],set[Gi,Ka]], set[Ou])
       it "(1,0)(1,1)*1, (1,1)*3" $
         checkUnpromoted ([[1,0],[1,1]]:replicate 3 [[1,1]]) `shouldBe` return ([set[Ou],set[Gi,Ka],set[Gi,Ka],set[Gi,Ka]], set[Ou,Gi,Ka])
+
+    describe "ou gi ki check"$ do
+      it "(2,2)*1, (1,1)(-1,-1)*1, (-1,-1)*4" $
+        checkUnpromoted ([[2,2]]:replicate 1 [[1,1],[-1,-1]]++replicate 4 [[-1,-1]]) `shouldBe` return (set[Ka]:replicate 1(set[Gi,Ou])++replicate 4 (set[Gi,Ou,Ki]),set[Ka,Gi,Ki,Ou])
+      it "(2,2)*1, (1,1)(-1,-1)*2, (-1,-1)*3" $
+        checkUnpromoted ([[2,2]]:replicate 2 [[1,1],[-1,-1]]++replicate 3 [[-1,-1]]) `shouldBe` return (set[Ka]:replicate 2(set[Gi,Ou])++replicate 3 (set[Gi,Ou,Ki]),set[Ka,Gi,Ki,Ou])
+      it "(2,2)*1, (1,1)(-1,-1)*3, (-1,-1)*2" $
+        checkUnpromoted ([[2,2]]:replicate 3 [[1,1],[-1,-1]]++replicate 2 [[-1,-1]]) `shouldBe` return (set[Ka]:replicate 3(set[Gi,Ou])++replicate 2 (set[Ki]),set[Ka,Gi,Ki,Ou])
 
     describe "simple promote"$ do
       it "(0,-2)nari*1" $
@@ -116,3 +124,8 @@ spec = do
       let d = (liftM fst$ c) >>= step 3 ([0,-2], False) False
       it "move 3 (0,-2)" $
         d `shouldBe` return (set[Ka]:(replicate 3$ set[Ky,Hi]),set[Ka,Ky,Hi])
+
+    describe "gradual"$ do
+      let a = step 1 ([1,1], False) False (set[Ka]:replicate 5 (set[Gi,Ki,Ou]))
+      it "move 1 (1,1)nari on 0=Ka" $
+        a `shouldBe` return (set[Ka]:set[Gi,Ou]:replicate 4 (set[Gi,Ki,Ou]),set[Ka,Gi,Ki,Ou])

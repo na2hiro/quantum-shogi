@@ -117,10 +117,10 @@ getLimitedUnpromoted = liftM foldPossibilities. checkFromMove. map enpromote
 enpromote :: [Move]->[Log]
 enpromote = flip zip (repeat False)
 
--- 可能性が1つしか無いものを固定していく
+-- 誰をも含まない駒集合から固定していく
 assign1 :: Possibilities->Maybe ((SuperPiece, [Index]), Possibilities)
 assign1 xs = do
-    x@(sp, is) <- find ((==1). S.size. fst)$ xs
+    x@(sp, is) <- find (\(x,_)->all(\(xx,_)->x==xx||not(xx `isSubsetOf` x))xs) xs
     return (x, map (\(sp1, is1)->((S.\\)sp1 sp, (Data.List.\\) is1 is))$ filter(/=x)xs)
 
 assign :: Possibilities->(Possibilities, Possibilities)
@@ -147,7 +147,7 @@ getResult sps = do
     detail <- checkFromSuperPiece sps
     let ps = assign2list (length sps). assign$ detail
     let fulls = unions$ map fst detail
-    return (map(\(p, sp)->if p==[] then ((S.\\) sp fulls) else S.fromList p)$ zip ps sps, fulls)
+    return (map(\(p, sp)->if p==[] then ((S.\\) sp fulls) else (S.fromList p)`S.intersection`sp)$ zip ps sps, fulls)
 
 checkUnpromoted :: [[Move]]->ThrowsError([SuperPiece], SuperPiece)
 checkUnpromoted = check. map enpromote
