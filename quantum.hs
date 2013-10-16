@@ -117,6 +117,7 @@ getLimitedUnpromoted = liftM foldPossibilities. checkFromMove. map enpromote
 enpromote :: [Move]->[Log]
 enpromote = flip zip (repeat False)
 
+-- 可能性が1つしか無いものを固定していく
 assign1 :: Possibilities->Maybe ((SuperPiece, [Index]), Possibilities)
 assign1 xs = do
     x@(sp, is) <- find ((==1). S.size. fst)$ xs
@@ -129,11 +130,12 @@ assign xs = case assign1 xs' of
   where xs' = filter(not. S.null. fst) xs
 
 assign2list :: Int->(Possibilities, Possibilities) -> [[Piece]]
-assign2list len (x, y)= a2l 0$ sortBy(\(_,i1) (_,i2)->compare i1 i2)$ unwind(x++y)
+assign2list len (x, y)= a2l 0$ sortBy compareSnd$ unwind(x++y)
   where a2l n [] = replicate (len-n) []
         a2l n xss@((sp,i):xs)|n==i = S.toList sp:a2l (n+1) xs
                            |otherwise = []:a2l (n+1) xss
-        unwind xs = concat. map (\(sp, is)->[(sp, i)|i<-is])$ xs
+        unwind xs = nub. concat. map (\(sp, is)->[(sp, i)|i<-is])$ xs
+        compareSnd (_,i1) (_,i2) = compare i1 i2
 
 check :: [[Log]]->ThrowsError Result
 check lgs = do

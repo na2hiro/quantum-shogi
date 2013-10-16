@@ -52,6 +52,8 @@ spec = do
         checkFromMoveUnpromoted [[[0,-2]],[[0,-2]]] `shouldBe` return [(set[],[0,1])]
       it "(0,-2)*2, (0,2)*1" $
         checkFromMoveUnpromoted [[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` return [(set[Hi],[2]),(set[],[0,1]),(set[Ky,Hi],[0,1,2])]
+      it "(2,2)*2 (0,-2)*3" $
+        checkFromMoveUnpromoted ([[2,2]]:replicate 3 [[0,-2]]) `shouldBe` return [(set [Ka],[0]), (set [Ky,Hi],[1,2,3]),(set[Ky,Ka,Hi],[1,2,3,0])]
 
     describe "ou detailed"$ do
       it "(1,0)(1,1)*1, (1,1)*2" $
@@ -64,6 +66,8 @@ spec = do
         checkUnpromoted [[[0,-2]],[[0,-2]]] `shouldBe` return ([set[Ky,Hi],set[Ky,Hi]], set[])
       it "(0,-2)*2, (0,2)*1" $
         checkUnpromoted [[[0,-2]],[[0,-2]],[[0,2]]] `shouldBe` return ([set[Ky],set[Ky],set[Hi]], set[Ky,Hi])
+      it "(2,2)*2 (0,-2)*3" $
+        checkUnpromoted ([[2,2]]:replicate 3 [[0,-2]]) `shouldBe` return (set[Ka]:replicate 3 (set[Ky,Hi]), set[Ka,Ky,Hi])
 
     describe "ou check"$ do
       it "(1,0)(1,1)*1, (1,1)*2" $
@@ -98,3 +102,17 @@ spec = do
       let a = step 1 ([1,1], False) True [set[Ka]]
       it "move 1 (1,1)nari on 0=Ka" $
         a `shouldBe` return ([set[Ka],set[Gi]],set[Ka])
+
+    describe "multi full"$ do
+      let a = step 0 ([-2,-2], False) False []
+      it "move 0 (-2,-2)" $
+        a `shouldBe` return ([set[Ka]],set[Ka])
+      let b = (liftM fst$ a) >>= step 1 ([0,-2], False) False 
+      it "move 1 (0,-2)" $
+        b `shouldBe` return ([set[Ka],set[Ky,Hi]],set[Ka])
+      let c = (liftM fst$ b) >>= step 2 ([0,-2], False) False
+      it "move 2 (0,-2)" $
+        c `shouldBe` return (set[Ka]:(replicate 2$ set[Ky,Hi]),set[Ka])
+      let d = (liftM fst$ c) >>= step 3 ([0,-2], False) False
+      it "move 3 (0,-2)" $
+        d `shouldBe` return (set[Ka]:(replicate 3$ set[Ky,Hi]),set[Ka,Ky,Hi])
