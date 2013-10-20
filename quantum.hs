@@ -6,6 +6,7 @@ import Control.Monad(filterM)
 import Control.Monad.Error
 
 data Piece = Fu | Ky | Ke | Gi | Ki | Ka | Hi | Ou deriving (Eq, Ord, Show, Read)
+data MoveType = Promote | NoPromote1 | NoPromote2 | Captured | Normal deriving(Eq, Show, Read)
 type Move = [Int]
 type SuperPiece = Set Piece
 type Result = ([SuperPiece], SuperPiece)
@@ -13,17 +14,6 @@ type Possibilities = [(SuperPiece, [Index])]
 type Index = Int
 type Log = (Move, Promote)
 type Promote = Bool
-{-
-showPiece Fu = "aa"
-showPiece Ky = "ab"
-showPiece Ke = "ac"
-showPiece Gi = "ad"
-showPiece Ki = "ae"
-showPiece Ka = "af"
-showPiece Hi = "ag"
-showPiece Ou = "ah"
-instance Show Piece where show = showPiece
--}
 
 data MyError = InvalidMoveCombination Index
              | InvalidMove Index Index 
@@ -63,6 +53,19 @@ move Ki True = []
 move Ka True = [[1,0],[-1,0],[0,1],[0,-1],[1,-1],[-1,-1],[1,1],[-1,1],[2,-2],[-2,-2],[2,2],[-2,2]]
 move Hi True = [[1,-1],[-1,-1],[1,1],[-1,1],[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]
 move Ou True = []
+
+filteringPiece :: MoveType->[Piece]
+filteringPiece Promote = [Ki,Ou]
+filteringPiece NoPromote1 = [Fu,Ky,Ke]
+filteringPiece NoPromote2 = [Ke]
+filteringPiece Captured = [Ou]
+filteringPiece Normal = []
+
+allPieces :: SuperPiece
+allPieces = S.fromList[Fu,Ky,Ke,Gi,Ki,Ka,Hi,Ou]
+
+filterByType :: MoveType->SuperPiece->SuperPiece
+filterByType mt sp = sp `S.difference` S.fromList (filteringPiece mt)
 
 initialPieces :: [(Piece, Int)]
 initialPieces = [(Fu, 9), (Ky, 2), (Ke, 2), (Gi, 2), (Ki, 2), (Ka, 1), (Hi, 1), (Ou, 1)]
@@ -167,16 +170,15 @@ superPiece2union :: [SuperPiece]->ThrowsError Possibilities
 superPiece2union supers = liftM (countsUnionWithIndices. countWithIndices)$ mapM f (zip [0..] supers) 
   where f (i, sup) = if sup==S.fromList[] then throwError$ InvalidMoveCombination i else return sup
 
-filterPromotion :: SuperPiece->SuperPiece
-filterPromotion = (`S.difference` S.fromList[Ki, Ou])
-
 applyNth :: Int->(a->a)->[a]->[a]
 applyNth n f xs = take n xs ++ f (xs!!n) : drop (n+1) xs
 
-step :: Int->Log->Promote->[SuperPiece]->ThrowsError ([SuperPiece], SuperPiece)
-step iden lg promnow sps = do
-    super <- move2superPiece (0, [lg])
-    let sp = if promnow then filterPromotion super else super
+step :: Int->Maybe Log->MoveType->[SuperPiece]->ThrowsError ([SuperPiece], SuperPiece)
+step iden maybelg movetype sps = do
+    super <- case maybelg of
+               Just lg->move2superPiece (0, [lg])
+               Nothing->return allPieces
+    let sp = filterByType movetype super
     let newsps = if iden<length sps
                    then applyNth iden (S.intersection sp) sps
                    else sps++[sp]

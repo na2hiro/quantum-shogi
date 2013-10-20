@@ -90,42 +90,52 @@ spec = do
         check [[([1,1], True),([1,1],False)]] `shouldBe` return ([set[Ka]], set[Ka])
 
     describe "simple step"$ do
-      let a = step 0 ([0,-2], False) False []
+      let a = step 0 (Just([0,-2], False)) Normal []
       it "move 0 (0,-2)" $
         a `shouldBe` return ([set[Ky,Hi]],set[])
-      let b = (liftM fst$ a) >>= step 1 ([0,-2], False) False 
+      let b = (liftM fst$ a) >>= step 1 (Just([0,-2], False)) Normal
       it "move 1 (0,-2)" $
         b `shouldBe` return (replicate 2$ set[Ky,Hi],set[])
-      let c = (liftM fst$ b) >>= step 2 ([0,-2], False) False
+      let c = (liftM fst$ b) >>= step 2 (Just([0,-2], False)) Normal
       it "move 2 (0,-2)" $
         c `shouldBe` return (replicate 3$ set[Ky,Hi],set[Ky,Hi])
-      let d = (liftM fst$ c) >>= step 2 ([0,2], False) False
+      let d = (liftM fst$ c) >>= step 2 (Just([0,2], False)) Normal
       it "move 2 (0,2)" $
         d `shouldBe` return ((replicate 2$ set[Ky])++[set[Hi]],set[Ky,Hi])
-      let e = (liftM fst$ d) >>= step 3 ([0,2], False) False
+      let e = (liftM fst$ d) >>= step 3 (Just([0,2], False)) Normal
       it "move 3 (0,-2)" $
         e `shouldBe` Left (PieceExhausted (set[Hi]) 2)
 
     describe "promotenow"$ do
-      let a = step 1 ([1,1], False) True [set[Ka]]
+      let a = step 1 (Just([1,1], False)) Promote [set[Ka]]
       it "move 1 (1,1)nari on 0=Ka" $
         a `shouldBe` return ([set[Ka],set[Gi]],set[Ka])
 
     describe "multi full"$ do
-      let a = step 0 ([-2,-2], False) False []
+      let a = step 0 (Just([-2,-2], False)) Normal []
       it "move 0 (-2,-2)" $
         a `shouldBe` return ([set[Ka]],set[Ka])
-      let b = (liftM fst$ a) >>= step 1 ([0,-2], False) False 
+      let b = (liftM fst$ a) >>= step 1 (Just([0,-2], False)) Normal
       it "move 1 (0,-2)" $
         b `shouldBe` return ([set[Ka],set[Ky,Hi]],set[Ka])
-      let c = (liftM fst$ b) >>= step 2 ([0,-2], False) False
+      let c = (liftM fst$ b) >>= step 2 (Just([0,-2], False)) Normal
       it "move 2 (0,-2)" $
         c `shouldBe` return (set[Ka]:(replicate 2$ set[Ky,Hi]),set[Ka])
-      let d = (liftM fst$ c) >>= step 3 ([0,-2], False) False
+      let d = (liftM fst$ c) >>= step 3 (Just([0,-2], False)) Normal
       it "move 3 (0,-2)" $
         d `shouldBe` return (set[Ka]:(replicate 3$ set[Ky,Hi]),set[Ka,Ky,Hi])
 
     describe "gradual"$ do
-      let a = step 1 ([1,1], False) False (set[Ka]:replicate 5 (set[Gi,Ki,Ou]))
+      let a = step 1 (Just([1,1], False)) Normal (set[Ka]:replicate 5 (set[Gi,Ki,Ou]))
       it "move 1 (1,1)nari on 0=Ka" $
         a `shouldBe` return (set[Ka]:set[Gi,Ou]:replicate 4 (set[Gi,Ki,Ou]),set[Ka,Gi,Ki,Ou])
+
+    describe "filterByType"$ do
+      it "move 0 (1,1)nari" $
+        step 0 (Just([1,1], False)) Promote [] `shouldBe` return ([set[Ka,Gi]],set[])
+      it "move 0 (0,-2)nonari1" $
+        step 0 (Just([0,-2], False)) NoPromote1 [] `shouldBe` return ([set[Hi]],set[Hi])
+      it "nomove 0 nonari2" $
+        step 0 Nothing NoPromote2 [] `shouldBe` return ([set[Fu,Ky,Gi,Ki,Ka,Hi,Ou]],set[])
+      it "nomove 0 captured" $
+        step 0 Nothing Captured [] `shouldBe` return ([set[Fu,Ky,Ke,Gi,Ki,Ka,Hi]],set[])
