@@ -139,3 +139,5 @@ spec = do
         step 0 Nothing NoPromote2 [] `shouldBe` return ([set[Fu,Ky,Gi,Ki,Ka,Hi,Ou]],set[])
       it "nomove 0 captured" $
         step 0 Nothing Captured [] `shouldBe` return ([set[Fu,Ky,Ke,Gi,Ki,Ka,Hi]],set[])
+
+main = hspec spec
