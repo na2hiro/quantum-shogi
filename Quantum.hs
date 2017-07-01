@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Quantum where
 import Data.Map as M hiding(map, filter, null, union, foldr, unions)
 import Data.Set as S hiding(map, filter, foldr)
