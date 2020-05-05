@@ -3,7 +3,7 @@
 module Quantum where
 import Data.Map as M hiding(map, filter, null, union, foldr, unions)
 import Data.Set as S hiding(map, filter, foldr)
-import Data.List --(intercalate, nub, foldr1, union, foldr, group)
+import Data.List as L
 import Control.Monad(filterM)
 import Control.Monad.Error
 
@@ -73,7 +73,7 @@ initialPieces :: [(Piece, Int)]
 initialPieces = [(Fu, 9), (Ky, 2), (Ke, 2), (Gi, 2), (Ki, 2), (Ka, 1), (Hi, 1), (Ou, 1)]
 
 movingBoard :: Bool->Map Move SuperPiece
-movingBoard prom = Data.List.foldr f M.empty [(mov, piece)|(piece, _)<-initialPieces, mov<-move piece prom]
+movingBoard prom = L.foldr f M.empty [(mov, piece)|(piece, _)<-initialPieces, mov<-move piece prom]
   where f (mv, p) mp = case M.lookup mv mp of
                          Just set->M.insert mv (S.insert p set) mp
                          Nothing->M.insert mv (S.insert p S.empty) mp
@@ -126,7 +126,7 @@ enpromote = flip zip (repeat False)
 assign1 :: Possibilities->Maybe ((SuperPiece, [Index]), Possibilities)
 assign1 xs = do
     x@(sp, is) <- find (\(x,_)->all(\(xx,_)->x==xx||not(xx `isSubsetOf` x))xs) xs
-    return (x, map (\(sp1, is1)->((S.\\)sp1 sp, (Data.List.\\) is1 is))$ filter(/=x)xs)
+    return (x, map (\(sp1, is1)->((S.\\)sp1 sp, (L.\\) is1 is))$ filter(/=x)xs)
 
 assign :: Possibilities->(Possibilities, Possibilities)
 assign xs = case assign1 xs' of
@@ -173,7 +173,7 @@ superPiece2union supers = liftM (countsUnionWithIndices. countWithIndices)$ mapM
   where f (i, sup) = if sup==S.fromList[] then throwError$ InvalidMoveCombination i else return sup
 
 applyNth :: Int->(a->a)->[a]->[a]
-applyNth n f xs = take n xs ++ f (xs!!n) : drop (n+1) xs
+applyNth n f xs = L.take n xs ++ f (xs!!n) : L.drop (n+1) xs
 
 step :: Int->Maybe Log->MoveType->[SuperPiece]->ThrowsError ([SuperPiece], SuperPiece)
 step iden maybelg movetype sps = do
